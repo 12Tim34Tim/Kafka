@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reise-Station XIII: Philosophischer Salon</title>
+  <style>
+    body {
+      background: #fdfcf7;
+      color: #2c2a29;
+      font-family: 'Courier New', Courier, monospace;
+      margin: 0;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    #info {
+      display: none;
+      font-size: 12px;
+      color: #7d756b;
+      margin-bottom: 12px;
+      text-align: center;
+      max-width: 450px;
+      line-height: 1.4;
+    }
+
+    /* Game Intro Overlay */
+    .intro-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #fdfcf7;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      box-sizing: border-box;
+      z-index: 2000;
+      text-align: center;
+      transition: opacity 0.35s ease;
+    }
+
+    .intro-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .intro-box {
+      background: #fcfaf2;
+      border: 1px solid rgba(139, 128, 115, 0.3);
+      padding: 24px;
+      border-radius: 6px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+      max-width: 360px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .intro-stamp {
+      border: 2px dashed #b82e24;
+      color: #b82e24;
+      padding: 4px 10px;
+      font-size: 10px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .intro-title {
+      font-size: 15px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      color: #2c2a29;
+    }
+
+    .intro-text {
+      font-size: 11.5px;
+      line-height: 1.5;
+      color: #5c5650;
+      margin-bottom: 20px;
+    }
+
+    .intro-btn {
+      background: #b82e24;
+      color: white;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 4px;
+      font-family: 'Courier New', Courier, monospace;
+      font-weight: bold;
+      cursor: pointer;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+
+    .intro-btn:hover {
+      background: #962018;
+    }
+
+    .paper-sheet {
+      width: 90%;
+      max-width: 450px;
+      height: 50vh;
+      background: #fcfaf2;
+      color: #2c2a29;
+      padding: 25px;
+      border-radius: 8px;
+      border: 1px solid rgba(139, 128, 115, 0.2);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .paper-sheet::before {
+      content: "SALON BERTA FANTA // GEDANKENPROTOKOLL";
+      position: absolute;
+      top: 6px;
+      left: 12px;
+      font-size: 8px;
+      font-weight: bold;
+      color: rgba(0, 0, 0, 0.3);
+      letter-spacing: 0.05em;
+    }
+
+    .typewriter-textarea {
+      flex: 1;
+      width: 100%;
+      background: transparent;
+      border: none;
+      resize: none;
+      outline: none;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 16px;
+      line-height: 1.8;
+      color: #222;
+      border-bottom: 1px dashed rgba(0, 0, 0, 0.1);
+      padding: 10px 0;
+    }
+
+    .action-bar {
+      margin-top: 15px;
+    }
+
+    .btn {
+      background: #b82e24;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      font-family: 'Courier New', Courier, monospace;
+      cursor: pointer;
+      font-weight: bold;
+      text-transform: uppercase;
+      font-size: 12px;
+    }
+
+    .btn:hover {
+      background: #962018;
+    }
+
+    .btn:disabled {
+      background: rgba(139, 128, 115, 0.15);
+      color: rgba(0, 0, 0, 0.25);
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    #char-count {
+      font-size: 9px;
+      color: #7d756b;
+      text-align: right;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="info">Schreiben Sie Ihre Gedanken nieder und fügen Sie sie Ihrem Reisetagebuch hinzu (mind. 15 Zeichen).
+  </div>
+
+  <div class="paper-sheet">
+    <textarea class="typewriter-textarea" id="philosophyText" placeholder="Schreiben Sie hier Ihren Gedanken nieder..."
+      maxlength="160" oninput="validateText()"></textarea>
+    <div id="char-count">Zeichen: 0 / 160</div>
+  </div>
+
+  <div class="action-bar">
+    <button class="btn" id="submitBtn" onclick="submitPhilosophy()" disabled>Aufgabe abschließen</button>
+  </div>
+
+  <script>
+    let gameStarted = false;
+    const textarea = document.getElementById('philosophyText');
+    const submitBtn = document.getElementById('submitBtn');
+    const charCount = document.getElementById('char-count');
+
+    function validateText() {
+      if (!gameStarted) return;
+      const text = textarea.value.trim();
+      charCount.textContent = `Zeichen: ${text.length} / 160`;
+
+      if (text.length >= 15) {
+        submitBtn.disabled = false;
+      } else {
+        submitBtn.disabled = true;
+      }
+    }
+
+    function submitPhilosophy() {
+      const text = textarea.value.trim();
+
+      // Create canvas in memory to generate a screenshot (high-res)
+      const canvas = document.createElement('canvas');
+      canvas.width = 800;
+      canvas.height = 600;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(2, 2);
+
+      // Fill vintage background
+      ctx.fillStyle = '#ecece7';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw gridlines
+      ctx.strokeStyle = 'rgba(0,0,0,0.04)';
+      ctx.lineWidth = 1;
+      for (let y = 15; y < canvas.height; y += 15) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+
+      // Draw header
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.font = 'bold 9px "Courier New"';
+      ctx.fillText("SALON BERTA FANTA // AUFGABE", 20, 25);
+
+      // Draw philosophy text
+      ctx.fillStyle = '#1c1c1e';
+      ctx.font = 'bold 12px "Courier New"';
+
+      // Text wrapper function inline
+      function wrap(context, txt, x, y, maxWidth, lineHeight) {
+        const words = txt.split(' ');
+        let line = '';
+        for (let n = 0; n < words.length; n++) {
+          let testLine = line + words[n] + ' ';
+          let metrics = context.measureText(testLine);
+          if (metrics.width > maxWidth && n > 0) {
+            context.fillText(line, x, y);
+            line = words[n] + ' ';
+            y += lineHeight;
+          } else {
+            line = testLine;
+          }
+        }
+        context.fillText(line, x, y);
+      }
+
+      wrap(ctx, `„${text}“`, 30, 80, 340, 20);
+
+      // Draw stamp in corner
+      ctx.save();
+      ctx.strokeStyle = '#b82e24';
+      ctx.fillStyle = '#b82e24';
+      ctx.lineWidth = 2;
+      ctx.translate(310, 230);
+      ctx.rotate(-Math.PI / 12);
+      ctx.strokeRect(-40, -12, 80, 24);
+      ctx.font = 'bold 9px "Courier New"';
+      ctx.textAlign = 'center';
+      ctx.fillText("Verschickt", 0, 4);
+      ctx.restore();
+
+      const imgData = canvas.toDataURL('image/png');
+
+      window.parent.postMessage({
+        type: 'GAME_SUCCESS',
+        data: imgData,
+        text: text
+      }, '*');
+    }
+
+    function startAfterIntro() {
+      document.getElementById('introOverlay').classList.add('hidden');
+      gameStarted = true;
+    }
+  </script>
+  <div class="intro-overlay" id="introOverlay">
+    <div class="intro-box">
+      <div class="intro-stamp">Aufgabe</div>
+      <h2 class="intro-title">Philosophischer Salon</h2>
+      <p class="intro-text">Verfassen Sie einen eigenen philosophischen Gedanken oder eine Reflexion über Kafkas
+        Zerrissenheit und heften Sie ihn an die Wände des Intellektuellen-Salons von Berta Fanta.</p>
+      <button class="intro-btn" onclick="startAfterIntro()">Spiel starten</button>
+    </div>
+  </div>
+</body>
+
+</html>

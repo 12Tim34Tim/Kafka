@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reise-Station: Ausstehend</title>
+  <style>
+    body {
+      background: #fdfcf7;
+      color: #2c2a29;
+      font-family: 'Courier New', Courier, monospace;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+    .paper-sheet {
+      width: 90%;
+      max-width: 400px;
+      background: #fcfaf2;
+      color: #2c2a29;
+      padding: 30px 20px;
+      border-radius: 8px;
+      border: 1px solid rgba(139, 128, 115, 0.2);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      text-align: center;
+      position: relative;
+    }
+    .paper-sheet::before {
+      content: "STATUS: OFFEN // REISEPLAN";
+      position: absolute;
+      top: 6px;
+      left: 12px;
+      font-size: 8px;
+      font-weight: bold;
+      color: rgba(139,128,115,0.4);
+      letter-spacing: 0.05em;
+    }
+    h2 {
+      font-size: 16px;
+      margin-top: 15px;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    p {
+      font-size: 12px;
+      color: #5c5650;
+      line-height: 1.5;
+      margin-bottom: 25px;
+    }
+    .btn {
+      background: #b82e24;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      font-family: 'Courier New', Courier, monospace;
+      cursor: pointer;
+      font-weight: bold;
+      text-transform: uppercase;
+      font-size: 12px;
+    }
+    .btn:hover {
+      background: #962018;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="paper-sheet">
+    <h2>Aufgabe offen</h2>
+    <p>
+      Diese Reise-Station besitzt noch keine interaktive Aufgabe. Bestätigen Sie den Entwurf, um fortzufahren.
+    </p>
+    <button class="btn" onclick="submitPlaceholder()">Aufgabe abschließen</button>
+  </div>
+
+  <script>
+    function submitPlaceholder() {
+      // Create a dynamic stamp canvas to return as image
+      const canvas = document.createElement('canvas');
+      canvas.width = 400;
+      canvas.height = 300;
+      const ctx = canvas.getContext('2d');
+      
+      // Vintage background
+      ctx.fillStyle = '#ecece7';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Stamp borders
+      ctx.strokeStyle = '#b82e24';
+      ctx.lineWidth = 3;
+      ctx.save();
+      ctx.translate(200, 150);
+      ctx.rotate(-Math.PI / 12);
+      ctx.strokeRect(-120, -35, 240, 70);
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-115, -30, 230, 60);
+      
+      // Stamp text
+      ctx.fillStyle = '#b82e24';
+      ctx.font = 'bold 20px "Courier New"';
+      ctx.textAlign = 'center';
+      ctx.fillText("ENTWURF", 0, -2);
+      ctx.font = 'bold 12px "Courier New"';
+      ctx.fillText("AUFGABEN-ENTWURF", 0, 18);
+      ctx.restore();
+      
+      const imgData = canvas.toDataURL('image/png');
+      
+      window.parent.postMessage({
+        type: 'GAME_SUCCESS',
+        data: imgData
+      }, '*');
+    }
+  </script>
+</body>
+</html>

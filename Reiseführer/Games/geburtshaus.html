@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reise-Station I: Das Geburtshaus</title>
+  <style>
+    body {
+      background: #fdfcf7;
+      color: #2c2a29;
+      font-family: 'Courier New', Courier, monospace;
+      margin: 0;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    #info {
+      display: none;
+      font-size: 12px;
+      color: #7d756b;
+      margin-bottom: 8px;
+      text-align: center;
+      max-width: 450px;
+      line-height: 1.4;
+    }
+
+    .canvas-wrapper {
+      position: relative;
+      border: 1px solid rgba(139, 128, 115, 0.2);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+      max-width: 100%;
+    }
+
+    canvas {
+      display: block;
+      background: #ecece7;
+      cursor: grab;
+      max-width: 100%;
+      height: auto;
+    }
+
+    canvas:active {
+      cursor: grabbing;
+    }
+
+    .action-bar {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      background: #fdfcf7;
+      border: 1px solid rgba(139, 128, 115, 0.25);
+      color: #2c2a29;
+      padding: 8px 16px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: 'Courier New', Courier, monospace;
+      font-weight: bold;
+    }
+
+    .btn:hover {
+      background: rgba(139, 128, 115, 0.08);
+    }
+
+    /* Game Intro Overlay */
+    .intro-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #fdfcf7;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      box-sizing: border-box;
+      z-index: 2000;
+      text-align: center;
+      transition: opacity 0.35s ease;
+    }
+
+    .intro-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .intro-box {
+      background: #fcfaf2;
+      border: 1px solid rgba(139, 128, 115, 0.3);
+      padding: 24px;
+      border-radius: 6px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+      max-width: 360px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .intro-stamp {
+      border: 2px dashed #b82e24;
+      color: #b82e24;
+      padding: 4px 10px;
+      font-size: 10px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .intro-title {
+      font-size: 15px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      color: #2c2a29;
+    }
+
+    .intro-text {
+      font-size: 11.5px;
+      line-height: 1.5;
+      color: #5c5650;
+      margin-bottom: 20px;
+    }
+
+    .intro-btn {
+      background: #b82e24;
+      color: white;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 4px;
+      font-family: 'Courier New', Courier, monospace;
+      font-weight: bold;
+      cursor: pointer;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+
+    .intro-btn:hover {
+      background: #962018;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="info">
+    Bauen Sie das historische Haus „Zum Turm“ wieder auf. Ziehen Sie die Puzzleteile auf ihre korrekten Schattenplätze.
+    Das barocke Eingangsportal steht bereits fest verankert.
+  </div>
+
+  <div class="canvas-wrapper">
+    <canvas id="puzzleCanvas" width="400" height="380"></canvas>
+  </div>
+
+  <div class="action-bar">
+    <button class="btn" onclick="resetPuzzle()">Neustart</button>
+  </div>
+
+  <div class="intro-overlay" id="introOverlay">
+    <div class="intro-box">
+      <div class="intro-stamp">Aufgabe</div>
+      <h2 class="intro-title">Das Geburtshaus</h2>
+      <p class="intro-text">Ziehen Sie die verstreuten Puzzleteile auf ihre korrekten Schattenrisse, um das historische
+        „Haus zum Turm“ rund um das barocke Portal wieder aufzubauen.</p>
+      <button class="intro-btn" onclick="startAfterIntro()">Spiel starten</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('puzzleCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Drag-and-drop tolerance
+    const snapTolerance = 18;
+
+    // Pieces definition
+    // targetX, targetY are target top-left coordinates relative to the canvas
+    const pieces = [
+      { id: 'leftWall', label: 'L. Wand', w: 55, h: 80, x: 25, y: 50, startX: 25, startY: 50, targetX: 120, targetY: 240, color: '#d6c3a1', placed: false },
+      { id: 'rightWall', label: 'R. Wand', w: 55, h: 80, x: 320, y: 50, startX: 320, startY: 50, targetX: 225, targetY: 240, color: '#d6c3a1', placed: false },
+      { id: 'upperFloor', label: '1. Stock', w: 160, h: 100, x: 120, y: 15, startX: 120, startY: 15, targetX: 120, targetY: 140, color: '#c2b090', placed: false },
+      { id: 'leftRoof', label: 'L. Dach', w: 80, h: 60, x: 25, y: 280, startX: 25, startY: 280, targetX: 120, targetY: 80, color: '#59656f', placed: false, shape: 'triangleLeft' },
+      { id: 'rightRoof', label: 'R. Dach', w: 80, h: 60, x: 295, y: 280, startX: 295, startY: 280, targetX: 200, targetY: 80, color: '#59656f', placed: false, shape: 'triangleRight' }
+    ];
+
+    // Baroque portal is pre-drawn on target position
+    // targetX: 175, targetY: 240, w: 50, h: 80
+    const portal = { x: 175, y: 240, w: 50, h: 80, color: '#8c7b6c' };
+
+    let activePiece = null;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+    let successTriggered = false;
+
+    // Events
+    canvas.addEventListener('mousedown', onMouseDown);
+    canvas.addEventListener('mousemove', onMouseMove);
+    canvas.addEventListener('mouseup', onMouseUp);
+
+    // Touch Support
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      onMouseDown({ clientX: touch.clientX, clientY: touch.clientY });
+    });
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      onMouseMove({ clientX: touch.clientX, clientY: touch.clientY });
+    });
+    canvas.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      onMouseUp();
+    });
+
+    function onMouseDown(e) {
+      if (successTriggered) return;
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      // Check pieces from top to bottom (reverse order)
+      for (let i = pieces.length - 1; i >= 0; i--) {
+        const piece = pieces[i];
+        if (piece.placed) continue; // Placed pieces cannot be dragged again
+
+        if (clickX >= piece.x && clickX <= piece.x + piece.w &&
+          clickY >= piece.y && clickY <= piece.y + piece.h) {
+          activePiece = piece;
+          dragOffsetX = clickX - piece.x;
+          dragOffsetY = clickY - piece.y;
+          // Bring active piece to the top of the stack
+          pieces.splice(i, 1);
+          pieces.push(activePiece);
+          break;
+        }
+      }
+    }
+
+    function onMouseMove(e) {
+      if (!activePiece || successTriggered) return;
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      activePiece.x = mouseX - dragOffsetX;
+      activePiece.y = mouseY - dragOffsetY;
+
+      // Restrict within canvas boundary
+      activePiece.x = Math.max(0, Math.min(canvas.width - activePiece.w, activePiece.x));
+      activePiece.y = Math.max(0, Math.min(canvas.height - activePiece.h, activePiece.y));
+
+      draw();
+    }
+
+    function onMouseUp() {
+      if (!activePiece || successTriggered) return;
+
+      // Drop the piece wherever it is placed by the user (no snapping)
+      activePiece.placed = true;
+
+      activePiece = null;
+      draw();
+      checkSuccess();
+    }
+
+    function resetPuzzle() {
+      if (successTriggered) return;
+      pieces.forEach(p => {
+        p.x = p.startX;
+        p.y = p.startY;
+        p.placed = false;
+      });
+      draw();
+    }
+
+    function checkSuccess() {
+      const allPlaced = pieces.every(p => p.placed);
+      if (allPlaced && !successTriggered) {
+        successTriggered = true;
+        draw(); // Redraw to include completion stamps
+        setTimeout(() => {
+          const imgData = canvas.toDataURL('image/png');
+          window.parent.postMessage({
+            type: 'GAME_SUCCESS',
+            data: imgData
+          }, '*');
+        }, 1200);
+      }
+    }
+
+    function draw() {
+      // Clear canvas
+      ctx.fillStyle = '#ecece7';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw dashed outlines of the targets (the "blueprint")
+      ctx.strokeStyle = 'rgba(44, 42, 41, 0.25)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+
+      // House target outlines
+      pieces.forEach(piece => {
+        if (!piece.placed) {
+          if (piece.shape === 'triangleLeft') {
+            ctx.beginPath();
+            ctx.moveTo(piece.targetX, piece.targetY + piece.h);
+            ctx.lineTo(piece.targetX + piece.w, piece.targetY + piece.h);
+            ctx.lineTo(piece.targetX + piece.w, piece.targetY);
+            ctx.closePath();
+            ctx.stroke();
+          } else if (piece.shape === 'triangleRight') {
+            ctx.beginPath();
+            ctx.moveTo(piece.targetX, piece.targetY);
+            ctx.lineTo(piece.targetX + piece.w, piece.targetY + piece.h);
+            ctx.lineTo(piece.targetX, piece.targetY + piece.h);
+            ctx.closePath();
+            ctx.stroke();
+          } else {
+            ctx.strokeRect(piece.targetX, piece.targetY, piece.w, piece.h);
+          }
+        }
+      });
+      ctx.setLineDash([]); // Reset dashed lines
+
+      // Draw the pre-built Baroque Portal
+      ctx.fillStyle = portal.color;
+      ctx.fillRect(portal.x, portal.y, portal.w, portal.h);
+
+      // Draw stone border lines on portal
+      ctx.strokeStyle = '#4e453d';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(portal.x + 2, portal.y + 2, portal.w - 4, portal.h - 4);
+
+      // Archway detail
+      ctx.beginPath();
+      ctx.arc(portal.x + portal.w / 2, portal.y + 35, 15, Math.PI, 0);
+      ctx.lineTo(portal.x + portal.w / 2 + 15, portal.y + portal.h);
+      ctx.lineTo(portal.x + portal.w / 2 - 15, portal.y + portal.h);
+      ctx.closePath();
+      ctx.fillStyle = '#4e453d';
+      ctx.fill();
+      ctx.stroke();
+
+      // Draw pieces
+      pieces.forEach(piece => {
+        ctx.fillStyle = piece.color;
+
+        if (piece.shape === 'triangleLeft') {
+          // Left roof triangle
+          ctx.beginPath();
+          ctx.moveTo(piece.x, piece.y + piece.h);
+          ctx.lineTo(piece.x + piece.w, piece.y + piece.h);
+          ctx.lineTo(piece.x + piece.w, piece.y);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.strokeStyle = '#2c2a29';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          // Dachpfannen-Linien
+          ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+          ctx.lineWidth = 1;
+          for (let offset = 15; offset < piece.w; offset += 15) {
+            ctx.beginPath();
+            ctx.moveTo(piece.x + offset, piece.y + piece.h);
+            ctx.lineTo(piece.x + piece.w, piece.y + (offset * piece.h / piece.w));
+            ctx.stroke();
+          }
+        } else if (piece.shape === 'triangleRight') {
+          // Right roof triangle
+          ctx.beginPath();
+          ctx.moveTo(piece.x, piece.y);
+          ctx.lineTo(piece.x + piece.w, piece.y + piece.h);
+          ctx.lineTo(piece.x, piece.y + piece.h);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.strokeStyle = '#2c2a29';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          // Dachpfannen-Linien
+          ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+          ctx.lineWidth = 1;
+          for (let offset = 15; offset < piece.w; offset += 15) {
+            ctx.beginPath();
+            ctx.moveTo(piece.x + offset, piece.y + (offset * piece.h / piece.w));
+            ctx.lineTo(piece.x + offset, piece.y + piece.h);
+            ctx.stroke();
+          }
+        } else {
+          // Rectangle pieces (walls / upper floor)
+          ctx.fillRect(piece.x, piece.y, piece.w, piece.h);
+
+          ctx.strokeStyle = '#2c2a29';
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(piece.x, piece.y, piece.w, piece.h);
+
+          // Details for Upper Floor: Windows
+          if (piece.id === 'upperFloor') {
+            ctx.fillStyle = '#4e453d';
+            // Three windows
+            for (let i = 0; i < 3; i++) {
+              const wx = piece.x + 18 + i * 48;
+              const wy = piece.y + 25;
+              ctx.fillRect(wx, wy, 25, 45);
+              ctx.strokeStyle = '#2c2a29';
+              ctx.lineWidth = 1;
+              ctx.strokeRect(wx, wy, 25, 45);
+              // Window frame
+              ctx.beginPath();
+              ctx.moveTo(wx + 12.5, wy); ctx.lineTo(wx + 12.5, wy + 45);
+              ctx.moveTo(wx, wy + 20); ctx.lineTo(wx + 25, wy + 20);
+              ctx.stroke();
+            }
+          }
+
+          // Details for Walls: One window each
+          if (piece.id === 'leftWall' || piece.id === 'rightWall') {
+            ctx.fillStyle = '#4e453d';
+            const wx = piece.x + piece.w / 2 - 10;
+            const wy = piece.y + 20;
+            ctx.fillRect(wx, wy, 20, 35);
+            ctx.strokeStyle = '#2c2a29';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(wx, wy, 20, 35);
+            ctx.beginPath();
+            ctx.moveTo(wx + 10, wy); ctx.lineTo(wx + 10, wy + 35);
+            ctx.moveTo(wx, wy + 15); ctx.lineTo(wx + 20, wy + 15);
+            ctx.stroke();
+          }
+        }
+
+        // Draw label when not placed
+        if (!piece.placed) {
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+          ctx.font = '9px "Courier New"';
+          ctx.textAlign = 'center';
+          ctx.fillText(piece.label, piece.x + piece.w / 2, piece.y + piece.h / 2 + 3);
+        }
+      });
+
+      // If active, draw outline highlight
+      if (activePiece) {
+        ctx.strokeStyle = '#b82e24';
+        ctx.lineWidth = 2.5;
+        if (activePiece.shape === 'triangleLeft') {
+          ctx.beginPath();
+          ctx.moveTo(activePiece.x, activePiece.y + activePiece.h);
+          ctx.lineTo(activePiece.x + activePiece.w, activePiece.y + activePiece.h);
+          ctx.lineTo(activePiece.x + activePiece.w, activePiece.y);
+          ctx.closePath();
+          ctx.stroke();
+        } else if (activePiece.shape === 'triangleRight') {
+          ctx.beginPath();
+          ctx.moveTo(activePiece.x, activePiece.y);
+          ctx.lineTo(activePiece.x + activePiece.w, activePiece.y + activePiece.h);
+          ctx.lineTo(activePiece.x, activePiece.y + activePiece.h);
+          ctx.closePath();
+          ctx.stroke();
+        } else {
+          ctx.strokeRect(activePiece.x, activePiece.y, activePiece.w, activePiece.h);
+        }
+      }
+
+      // Draw bottom divider line
+      ctx.strokeStyle = 'rgba(139, 128, 115, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, 335);
+      ctx.lineTo(canvas.width, 335);
+      ctx.stroke();
+
+      // If complete, draw a beautiful vintage circular stamp
+      if (successTriggered) {
+        ctx.save();
+        ctx.translate(290, 150);
+        ctx.rotate(-Math.PI / 10);
+
+        ctx.strokeStyle = '#b82e24';
+        ctx.lineWidth = 2.5;
+
+        // Outer stamp circle
+        ctx.beginPath();
+        ctx.arc(0, 0, 42, 0, 2 * Math.PI);
+        ctx.stroke();
+
+        // Inner circle
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(0, 0, 37, 0, 2 * Math.PI);
+        ctx.stroke();
+
+        // Stamp text
+        ctx.fillStyle = '#b82e24';
+        ctx.font = 'bold 9px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText("GEBAUT", 0, 0);
+        ctx.restore();
+      }
+    }
+
+    function startAfterIntro() {
+      document.getElementById('introOverlay').classList.add('hidden');
+    }
+
+    draw();
+  </script>
+</body>
+
+</html>
+</script>
+</body>
+
+</html>
