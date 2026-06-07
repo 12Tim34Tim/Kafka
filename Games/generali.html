@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reise-Station IV: Assicurazioni Generali</title>
+  <style>
+    body {
+      background: #fdfcf7;
+      color: #2c2a29;
+      font-family: 'Courier New', Courier, monospace;
+      margin: 0;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+    #info {
+      display: none;
+      font-size: 12px;
+      color: #7d756b;
+      margin-bottom: 8px;
+      text-align: center;
+      max-width: 450px;
+      line-height: 1.4;
+    }
+
+    /* Game Intro Overlay */
+    .intro-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #fdfcf7;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      box-sizing: border-box;
+      z-index: 2000;
+      text-align: center;
+      transition: opacity 0.35s ease;
+    }
+    .intro-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .intro-box {
+      background: #fcfaf2;
+      border: 1px solid rgba(139, 128, 115, 0.3);
+      padding: 24px;
+      border-radius: 6px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+      max-width: 360px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .intro-stamp {
+      border: 2px dashed #b82e24;
+      color: #b82e24;
+      padding: 4px 10px;
+      font-size: 10px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .intro-title {
+      font-size: 15px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      color: #2c2a29;
+    }
+    .intro-text {
+      font-size: 11.5px;
+      line-height: 1.5;
+      color: #5c5650;
+      margin-bottom: 20px;
+    }
+    .intro-btn {
+      background: #b82e24;
+      color: white;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 4px;
+      font-family: 'Courier New', Courier, monospace;
+      font-weight: bold;
+      cursor: pointer;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+    .intro-btn:hover {
+      background: #962018;
+    }
+    .canvas-wrapper {
+      position: relative;
+      border: 1px solid rgba(139, 128, 115, 0.2);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      max-width: 100%;
+    }
+    canvas {
+      display: block;
+      background: #e4e2db;
+      cursor: pointer;
+      max-width: 100%;
+      height: auto;
+    }
+    .action-bar {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+    }
+    .btn {
+      background: #fdfcf7;
+      border: 1px solid rgba(139, 128, 115, 0.25);
+      color: #2c2a29;
+      padding: 8px 16px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: 'Courier New', Courier, monospace;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .btn:hover {
+      background: rgba(139, 128, 115, 0.08);
+    }
+    .overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="info">
+    Arbeiten Sie Kafkas Büroschicht ab. Klicken/Tippen Sie auf die Akten, um sie abzustempeln, bevor deren Zeitbalken abläuft. Stempeln Sie so viele Akten wie möglich!
+  </div>
+
+  <div class="canvas-wrapper">
+    <canvas id="officeCanvas" width="400" height="390"></canvas>
+    
+    <!-- Game End Overlay -->
+    <div class="overlay" id="endOverlay">
+      <div id="overlayText" style="margin-bottom: 10px; font-size: 13px; text-align: center; line-height: 1.5; color: #fff;">
+        Schicht beendet.<br>Sie haben <strong id="finalScore">0</strong> Akten erfolgreich bearbeitet.
+      </div>
+      <div id="highscoreBox" style="margin-bottom: 15px; font-size: 11px; text-align: center; color: #ccc; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 10px; width: 100%; max-width: 250px; font-family: 'Courier New', Courier, monospace;">
+        Lade Bestenliste...
+      </div>
+      <div style="display: flex; gap: 15px;">
+        <button class="btn" style="background: #b82e24; color: white; border: none; padding: 10px 20px; font-family: 'Courier New', Courier, monospace; cursor: pointer; font-weight: bold; text-transform: uppercase;" onclick="saveAndContinue()">Weitermachen</button>
+        <button class="btn" style="background: #5c5650; color: white; border: none; padding: 10px 20px; font-family: 'Courier New', Courier, monospace; cursor: pointer; font-weight: bold; text-transform: uppercase;" onclick="startGame()">Wiederholen</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="action-bar" style="display: none;">
+    <button class="btn" id="startBtn" onclick="startGame()">Schicht beginnen</button>
+  </div>
+
+  <div class="intro-overlay" id="introOverlay">
+    <div class="intro-box">
+      <div class="intro-stamp">Aufgabe</div>
+      <h2 class="intro-title">Assicurazioni Generali</h2>
+      <p class="intro-text">Arbeiten Sie Kafkas kräftezehrende Büroschicht ab. Klicken oder tippen Sie schnell auf die eintreffenden Akten, um sie zu stempeln, bevor deren Zeitbalken abläuft.</p>
+      <button class="intro-btn" onclick="startAfterIntro()">Spiel starten</button>
+    </div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const playerName = urlParams.get('name') || "Spieler";
+
+    const canvas = document.getElementById('officeCanvas');
+    const ctx = canvas.getContext('2d');
+    const startBtn = document.getElementById('startBtn');
+
+    let score = 0;
+    let gameActive = false;
+    let gameOver = false;
+    let gameSnapshot = '';
+    let documents = []; // Active document sheets on desk
+    let stampParticles = []; // Visual clicks
+    let lastSpawnTime = 0;
+    let animFrame = null;
+
+    // Click/Touch event
+    canvas.addEventListener('mousedown', onCanvasClick);
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const touch = e.touches[0] || e.changedTouches[0];
+      if (touch) {
+        onCanvasClick({
+          clientX: touch.clientX,
+          clientY: touch.clientY
+        });
+      }
+    }, { passive: false });
+
+    function onCanvasClick(e) {
+      if (!gameActive || gameOver) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      let hit = false;
+
+      // Check documents (from top to bottom, reverse order)
+      for (let i = documents.length - 1; i >= 0; i--) {
+        const doc = documents[i];
+
+        if (clickX >= doc.x && clickX <= doc.x + doc.w &&
+            clickY >= doc.y && clickY <= doc.y + doc.h) {
+          
+          doc.stamped = true;
+          // Add stamp to stamps array with a random angle (e.g. -35 to +35 degrees, never upside down)
+          doc.stamps.push({
+            x: clickX - doc.x,
+            y: clickY - doc.y,
+            angle: (Math.random() - 0.5) * 1.22
+          });
+          score++;
+          hit = true;
+
+          // Add click effect
+          stampParticles.push({
+            x: clickX,
+            y: clickY,
+            alpha: 1,
+            size: 20
+          });
+
+          // No win condition on score - keep stamping infinitely until a file is missed!
+          break; // Only stamp the top-most document // Only stamp the top-most document
+        }
+      }
+
+      draw();
+    }
+
+    function startGame() {
+      // Reset
+      score = 0;
+      documents = [];
+      stampParticles = [];
+      gameActive = true;
+      gameOver = false;
+      lastSpawnTime = Date.now();
+      startBtn.disabled = true;
+      startBtn.textContent = "Arbeite...";
+      document.getElementById('endOverlay').classList.remove('active');
+      
+      // Spawn first document immediately
+      spawnDocument();
+
+      if (animFrame) cancelAnimationFrame(animFrame);
+      tick();
+    }
+
+    function spawnDocument() {
+      // Calculate speed based on score
+      // As score increases, files spawn faster
+      const docW = 110;
+      const docH = 145;
+      
+      // Random position on the "desk" (keep inside canvas boundaries)
+      const docX = 30 + Math.random() * (400 - docW - 60);
+      const docY = 50 + Math.random() * (390 - docH - 120);
+
+      // Max lifetime decreases as score increases
+      // Starting from 2300ms down to 1100ms
+      const maxLife = Math.max(1050, 2300 - score * 90);
+
+      documents.push({
+        x: docX,
+        y: docY,
+        w: docW,
+        h: docH,
+        spawnTime: Date.now(),
+        lifeTime: maxLife,
+        stamped: false,
+        stamps: [], // Stores multiple stamps on this document
+        fadeAlpha: 1,
+        // Small random angle for messy paper look
+        rotation: (Math.random() - 0.5) * 0.15,
+        // Mock text rows
+        textRows: Math.floor(Math.random() * 4) + 5
+      });
+    }
+
+    function tick() {
+      if (!gameActive) return;
+
+      const now = Date.now();
+
+      // Check spawn interval (speeds up infinitely down to 180ms)
+      const spawnInterval = Math.max(180, 1600 - score * 30);
+      
+      // Number of unstamped documents allowed increases with score to flood the table
+      let maxUnstamped = 3;
+      if (score >= 25) maxUnstamped = 5;
+      else if (score >= 12) maxUnstamped = 4;
+
+      if (now - lastSpawnTime > spawnInterval && documents.filter(d => !d.stamped).length < maxUnstamped) {
+        spawnDocument();
+        lastSpawnTime = now;
+      }
+
+      // Update documents life
+      for (let i = documents.length - 1; i >= 0; i--) {
+        const doc = documents[i];
+        
+        if (!doc.stamped) {
+          const age = now - doc.spawnTime;
+          if (age >= doc.lifeTime) {
+            // Document missed -> End Game!
+            endGame();
+            return;
+          }
+        }
+      }
+
+      // Update stamp particles
+      for (let i = stampParticles.length - 1; i >= 0; i--) {
+        const p = stampParticles[i];
+        p.alpha -= 0.08;
+        p.size += 1.5;
+        if (p.alpha <= 0) {
+          stampParticles.splice(i, 1);
+        }
+      }
+
+      draw();
+      animFrame = requestAnimationFrame(tick);
+    }
+
+    function endGame() {
+      gameActive = false;
+      if (animFrame) cancelAnimationFrame(animFrame);
+
+      // Redraw canvas with collision state
+      draw();
+      // Capture clean screenshot before stamp overlay
+      gameSnapshot = canvas.toDataURL('image/png');
+
+      // Show overlay and scores
+      document.getElementById('finalScore').textContent = score;
+      document.getElementById('endOverlay').classList.add('active');
+
+      submitAndLoadHighscores('generali', score);
+    }
+
+    function submitAndLoadHighscores(game, score) {
+      const highscoreBox = document.getElementById('highscoreBox');
+      if (!highscoreBox) return;
+
+      highscoreBox.innerHTML = "Speichere und lade Bestenliste...";
+
+      fetch('/api/highscore', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          game: game,
+          name: playerName,
+          score: score
+        })
+      })
+      .then(response => {
+        if (!response.ok) throw new Error("HTTP error " + response.status);
+        return response.json();
+      })
+      .then(data => {
+        // Find player's rank in the full list
+        let myRank = -1;
+        for (let i = 0; i < data.highscores.length; i++) {
+          if (data.highscores[i].name === playerName && data.highscores[i].score === score) {
+            myRank = i + 1;
+            break;
+          }
+        }
+
+        let html = '<div style="font-weight:bold;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;color:#fff;">🏆 BESTENLISTE 🏆</div>';
+        html += '<table style="width:100%;font-size:10px;border-collapse:collapse;color:#ccc;margin-bottom:8px;">';
+        
+        // Render only the top 5
+        const topFive = data.highscores.slice(0, 5);
+        topFive.forEach((entry, idx) => {
+          const isCurrent = (entry.name === playerName && entry.score === score && idx + 1 === myRank);
+          const style = isCurrent ? 'font-weight:bold;color:#fff;background:rgba(255,255,255,0.15);' : '';
+          html += `<tr style="${style}">
+            <td style="padding:2px 4px;text-align:left;">${idx + 1}. ${entry.name}</td>
+            <td style="padding:2px 4px;text-align:right;">${entry.score} Akten</td>
+          </tr>`;
+        });
+        html += '</table>';
+
+        // Show player's own rank below the top 5
+        if (myRank !== -1) {
+          html += `<div style="font-size:10px;font-weight:bold;color:#fff;border-top:1px dashed rgba(255,255,255,0.25);padding-top:6px;margin-top:6px;text-transform:uppercase;">Ihr Platz: ${myRank} mit ${score} Akten</div>`;
+        } else {
+          html += `<div style="font-size:10px;font-weight:bold;color:#fff;border-top:1px dashed rgba(255,255,255,0.25);padding-top:6px;margin-top:6px;text-transform:uppercase;">Ihr Platz: - mit ${score} Akten</div>`;
+        }
+
+        highscoreBox.innerHTML = html;
+      })
+      .catch(err => {
+        console.error("Failed to load highscores:", err);
+        highscoreBox.innerHTML = "Bestenliste konnte nicht geladen werden.";
+      });
+    }
+
+    function saveAndContinue() {
+      const imgData = gameSnapshot || canvas.toDataURL('image/png');
+      window.parent.postMessage({
+        type: 'GAME_SUCCESS',
+        data: imgData
+      }, '*');
+    }
+
+    function draw() {
+      // Clear (desk wood-ish / paper tone color)
+      ctx.fillStyle = '#dbd9d0';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw wood lines texture
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.03)';
+      ctx.lineWidth = 2;
+      for (let i = 20; i < canvas.height; i += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, i);
+        ctx.lineTo(canvas.width, i);
+        ctx.stroke();
+      }
+
+
+      // Draw active documents
+      documents.forEach(doc => {
+        ctx.save();
+        ctx.translate(doc.x + doc.w / 2, doc.y + doc.h / 2);
+        ctx.rotate(doc.rotation);
+        
+        ctx.globalAlpha = doc.fadeAlpha;
+
+        // Paper sheet shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.06)';
+        ctx.fillRect(-doc.w / 2 + 3, -doc.h / 2 + 3, doc.w, doc.h);
+
+        // Paper sheet
+        ctx.fillStyle = '#fcfcf9';
+        ctx.fillRect(-doc.w / 2, -doc.h / 2, doc.w, doc.h);
+        
+        ctx.strokeStyle = '#8b8073';
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(-doc.w / 2, -doc.h / 2, doc.w, doc.h);
+
+        // Document header title
+        ctx.fillStyle = '#4e453d';
+        ctx.font = 'bold 8px "Courier New"';
+        ctx.textAlign = 'left';
+        ctx.fillText("AKTE Nr. " + (1000 + doc.spawnTime % 9000), -doc.w / 2 + 8, -doc.h / 2 + 15);
+
+        // Subheader line
+        ctx.strokeStyle = 'rgba(139,128,115,0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(-doc.w / 2 + 8, -doc.h / 2 + 22);
+        ctx.lineTo(doc.w / 2 - 8, -doc.h / 2 + 22);
+        ctx.stroke();
+
+        // Write dummy lines of text
+        ctx.fillStyle = '#7d756b';
+        for (let j = 0; j < doc.textRows; j++) {
+          const ly = -doc.h / 2 + 34 + j * 10;
+          ctx.fillRect(-doc.w / 2 + 8, ly, doc.w - 16, 2);
+        }
+
+        // Draw all stamps on this document
+        doc.stamps.forEach(stamp => {
+          ctx.save();
+          // Translate to stamp position relative to center of sheet
+          ctx.translate(stamp.x - doc.w / 2, stamp.y - doc.h / 2);
+          ctx.rotate(stamp.angle);
+          
+          ctx.strokeStyle = 'rgba(184, 46, 36, 0.85)';
+          ctx.lineWidth = 1.6;
+          ctx.strokeRect(-30, -9, 60, 18);
+          
+          ctx.fillStyle = 'rgba(184, 46, 36, 0.85)';
+          ctx.font = 'bold 8px "Courier New"';
+          ctx.textAlign = 'center';
+          ctx.fillText("GEPRÜFT", 0, 3);
+          ctx.restore();
+        });
+
+        // If not stamped, draw life time progress bar at the top of the paper
+        if (!doc.stamped) {
+          const now = Date.now();
+          const age = now - doc.spawnTime;
+          const remainingPct = Math.max(0, 1 - age / doc.lifeTime);
+          
+          ctx.fillStyle = 'rgba(0,0,0,0.1)';
+          ctx.fillRect(-doc.w / 2 + 8, doc.h / 2 - 12, doc.w - 16, 4);
+          
+          ctx.fillStyle = remainingPct < 0.35 ? '#b82e24' : '#6f8b73';
+          ctx.fillRect(-doc.w / 2 + 8, doc.h / 2 - 12, (doc.w - 16) * remainingPct, 4);
+        }
+
+        ctx.restore();
+      });
+
+      // Reset global alpha
+      ctx.globalAlpha = 1;
+
+      // Draw click particles
+      stampParticles.forEach(p => {
+        ctx.save();
+        ctx.strokeStyle = `rgba(184, 46, 36, ${p.alpha})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      // Top Header HUD
+      ctx.fillStyle = '#2c2a29';
+      ctx.font = 'bold 11px "Courier New"';
+      ctx.textAlign = 'left';
+      ctx.fillText(`STEMPEL: ${score}`, 20, 30);
+
+    }
+
+    function startAfterIntro() {
+      document.getElementById('introOverlay').classList.add('hidden');
+      startGame();
+    }
+
+    draw();
+  </script>
+</body>
+</html>

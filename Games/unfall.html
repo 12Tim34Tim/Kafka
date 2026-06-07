@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reise-Station VI: Unfallrisiken</title>
+  <style>
+    body {
+      background: #fdfcf7;
+      color: #2c2a29;
+      font-family: 'Courier New', Courier, monospace;
+      margin: 0;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #game-info {
+      display: none;
+      text-align: center;
+      font-size: 13px;
+      color: #7d756b;
+      margin-bottom: 8px;
+    }
+
+    #game-status {
+      font-size: 14px;
+      font-weight: bold;
+      color: #b82e24;
+      margin-bottom: 8px;
+    }
+
+    .canvas-container {
+      position: relative;
+      width: 90vmin;
+      height: 90vmin;
+      max-width: 450px;
+      max-height: 450px;
+      border: 1px solid rgba(139, 128, 115, 0.2);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      background: url('../Assests/Unfallversicherung.png') no-repeat center center;
+      background-size: cover;
+      cursor: crosshair;
+    }
+
+    .success-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s;
+    }
+
+    .success-overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .stamp {
+      border: 3px double #d32f2f;
+      color: #d32f2f;
+      padding: 8px 16px;
+      font-size: 20px;
+      font-weight: bold;
+      transform: rotate(-10deg);
+      text-transform: uppercase;
+      margin-bottom: 15px;
+    }
+
+    /* Game Intro Overlay */
+    .intro-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #fdfcf7;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      box-sizing: border-box;
+      z-index: 2000;
+      text-align: center;
+      transition: opacity 0.35s ease;
+    }
+
+    .intro-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .intro-box {
+      background: #fcfaf2;
+      border: 1px solid rgba(139, 128, 115, 0.3);
+      padding: 24px;
+      border-radius: 6px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+      max-width: 360px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .intro-stamp {
+      border: 2px dashed #b82e24;
+      color: #b82e24;
+      padding: 4px 10px;
+      font-size: 10px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .intro-title {
+      font-size: 15px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      color: #2c2a29;
+    }
+
+    .intro-text {
+      font-size: 11.5px;
+      line-height: 1.5;
+      color: #5c5650;
+      margin-bottom: 20px;
+    }
+
+    .intro-btn {
+      background: #b82e24;
+      color: white;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 4px;
+      font-family: 'Courier New', Courier, monospace;
+      font-weight: bold;
+      cursor: pointer;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+
+    .intro-btn:hover {
+      background: #962018;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="game-info">Klicken Sie auf das Bild, um 3 Sicherheitsverstöße zu markieren.</div>
+  <div id="game-status">Verstöße gefunden: 0 / 3</div>
+
+  <div class="canvas-container">
+    <canvas id="unfallCanvas" width="1414" height="1414"></canvas>
+    <div class="success-overlay" id="successOverlay">
+      <div class="stamp">Erledigt</div>
+      <div>Aufgabe wird abgeschlossen...</div>
+    </div>
+  </div>
+
+  <div class="intro-overlay" id="introOverlay">
+    <div class="intro-box">
+      <div class="intro-stamp">Aufgabe</div>
+      <h2 class="intro-title">Arbeiter-Unfallversicherung</h2>
+      <p class="intro-text">Versuchen Sie wie Kafka auf dem historischen Fabrikbild drei Unfallrisiken ausfindig zu
+        machen.</p>
+      <button class="intro-btn" onclick="startAfterIntro()">Spiel starten</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('unfallCanvas');
+    const ctx = canvas.getContext('2d');
+    const statusText = document.getElementById('game-status');
+    const successOverlay = document.getElementById('successOverlay');
+    let gameStarted = false;
+
+    // Load and draw background image onto canvas so it's included in exports
+    const bgImg = new Image();
+    bgImg.onload = () => {
+      ctx.drawImage(bgImg, 0, 0, 1414, 1414);
+      drawAllWarningCircles();
+    };
+    bgImg.onerror = (err) => {
+      console.error("Failed to load background image:", err);
+    };
+    bgImg.src = '../Assests/Unfallversicherung.png';
+
+    // Violations coordinates (1414x1414 image space)
+    const violations = [
+      { id: 1, x: 741, y: 1084, name: "Kohlehaufen / Ofen", found: false },
+      { id: 2, x: 1028, y: 1005, name: "Arbeiter barfuß / Sandalen", found: false },
+      { id: 3, x: 799, y: 321, name: "Gerissenes Seil / Schmelztiegel", found: false }
+    ];
+
+    const clickRadius = 80; // Padding radius (px) in 1414x1414 coordinate space
+    let foundCount = 0;
+
+    function drawAllWarningCircles() {
+      violations.forEach(v => {
+        if (v.found) {
+          drawWarningCircle(v.x, v.y);
+        }
+      });
+    }
+
+    // Canvas click handler
+    canvas.addEventListener('click', (e) => {
+      if (!gameStarted || foundCount >= 3) return;
+
+      // Get click relative to canvas bounds
+      const rect = canvas.getBoundingClientRect();
+      const clickX = ((e.clientX - rect.left) / rect.width) * 1414;
+      const clickY = ((e.clientY - rect.top) / rect.height) * 1414;
+
+      // Place a warning circle zone wherever clicked
+      const v = violations[foundCount];
+      v.x = clickX;
+      v.y = clickY;
+      v.found = true;
+      v.drawCircle = true;
+
+      foundCount++;
+      drawWarningCircle(clickX, clickY);
+      updateStatus();
+    });
+
+    function drawWarningCircle(x, y) {
+      ctx.strokeStyle = '#d32f2f';
+      ctx.lineWidth = 10;
+      ctx.beginPath();
+      // Draw a rough double circle for a "stamped" hand-drawn feeling
+      ctx.arc(x, y, 60, 0, 2 * Math.PI);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x, y, 55, 0, 2 * Math.PI);
+      ctx.stroke();
+    }
+
+    function updateStatus() {
+      statusText.textContent = `Verstöße gefunden: ${foundCount} / 3`;
+      if (foundCount === 3) {
+        statusText.style.color = '#27c93f';
+        statusText.textContent = "Alle Sicherheitsrisiken dokumentiert.";
+
+        // Show stamp overlay
+        setTimeout(() => {
+          successOverlay.classList.add('show');
+
+          // Capture canvas state & send back
+          let imgData;
+          try {
+            imgData = canvas.toDataURL('image/png');
+          } catch (e) {
+            console.warn("Canvas is tainted (file:// protocol restriction). Drawing fallback image.", e);
+            // Local file:// sandboxing prevents toDataURL when an external image is loaded.
+            // We create a clean fallback canvas with the same size but generated dynamically to prevent crashes.
+            const fallbackCanvas = document.createElement('canvas');
+            fallbackCanvas.width = 400;
+            fallbackCanvas.height = 400;
+            const fctx = fallbackCanvas.getContext('2d');
+            fctx.fillStyle = '#ecece7';
+            fctx.fillRect(0, 0, 400, 400);
+
+            // Draw background grid resembling archive
+            fctx.strokeStyle = 'rgba(0,0,0,0.05)';
+            fctx.lineWidth = 1;
+            for (let i = 20; i < 400; i += 20) {
+              fctx.beginPath(); fctx.moveTo(i, 0); fctx.lineTo(i, 400); fctx.stroke();
+              fctx.beginPath(); fctx.moveTo(0, i); fctx.lineTo(400, i); fctx.stroke();
+            }
+
+            fctx.fillStyle = '#d32f2f';
+            fctx.font = 'bold 20px "Courier New"';
+            fctx.textAlign = 'center';
+            fctx.fillText("SICHERHEIT GEPRÜFT", 200, 160);
+
+            fctx.fillStyle = '#222';
+            fctx.font = '13px "Courier New"';
+            fctx.fillText("3 RISIKEN ERKANNT", 200, 200);
+            fctx.font = '10px "Courier New"';
+            fctx.fillStyle = '#666';
+            fctx.fillText("[Station dokumentiert]", 200, 230);
+
+            // Outer double stamp border
+            fctx.strokeStyle = '#d32f2f';
+            fctx.lineWidth = 3;
+            fctx.strokeRect(40, 110, 320, 150);
+            fctx.lineWidth = 1;
+            fctx.strokeRect(45, 115, 310, 140);
+
+            imgData = fallbackCanvas.toDataURL('image/png');
+          }
+
+          window.parent.postMessage({
+            type: 'GAME_SUCCESS',
+            data: imgData
+          }, '*');
+        }, 800);
+      }
+    }
+
+    function startAfterIntro() {
+      document.getElementById('introOverlay').classList.add('hidden');
+      gameStarted = true;
+    }
+  </script>
+</body>
+
+</html>

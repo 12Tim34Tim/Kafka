@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reise-Station II: Das Kinsky-Palais</title>
+  <style>
+    body {
+      background: #fdfcf7;
+      color: #2c2a29;
+      font-family: 'Courier New', Courier, monospace;
+      margin: 0;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    #info {
+      display: none;
+      font-size: 12px;
+      color: #7d756b;
+      margin-bottom: 8px;
+      text-align: center;
+      max-width: 450px;
+      line-height: 1.4;
+    }
+
+    .canvas-wrapper {
+      position: relative;
+      border: 1px solid rgba(139, 128, 115, 0.2);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+      max-width: 100%;
+    }
+
+    canvas {
+      display: block;
+      background: #ecece7;
+      max-width: 100%;
+      height: auto;
+    }
+
+    .dpad-container {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: repeat(3, 50px);
+      grid-template-rows: repeat(3, 40px);
+      gap: 5px;
+      justify-content: center;
+    }
+
+    .dpad-btn {
+      background: #fdfcf7;
+      border: 1px solid rgba(139, 128, 115, 0.35);
+      color: #2c2a29;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      border-radius: 4px;
+    }
+
+    .dpad-btn:active {
+      background: rgba(139, 128, 115, 0.15);
+    }
+
+    #msg {
+      color: #b82e24;
+      font-weight: bold;
+      font-size: 12px;
+      height: 15px;
+      margin-top: 5px;
+      text-align: center;
+    }
+
+    /* Game Intro Overlay */
+    .intro-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #fdfcf7;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      box-sizing: border-box;
+      z-index: 2000;
+      text-align: center;
+      transition: opacity 0.35s ease;
+    }
+
+    .intro-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .intro-box {
+      background: #fcfaf2;
+      border: 1px solid rgba(139, 128, 115, 0.3);
+      padding: 24px;
+      border-radius: 6px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+      max-width: 360px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .intro-stamp {
+      border: 2px dashed #b82e24;
+      color: #b82e24;
+      padding: 4px 10px;
+      font-size: 10px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .intro-title {
+      font-size: 15px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      color: #2c2a29;
+    }
+
+    .intro-text {
+      font-size: 11.5px;
+      line-height: 1.5;
+      color: #5c5650;
+      margin-bottom: 20px;
+    }
+
+    .intro-btn {
+      background: #b82e24;
+      color: white;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 4px;
+      font-family: 'Courier New', Courier, monospace;
+      font-weight: bold;
+      cursor: pointer;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+
+    .intro-btn:hover {
+      background: #962018;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="info">
+    Führen Sie Kafka (<strong>K</strong>) durch die Gänge des Palais zum Schuleingang (<strong>Ziel</strong>). Weichen
+    Sie seinem Vater (<strong>V</strong>) aus. Nutzen Sie die Pfeiltasten auf der Tastatur oder das D-Pad unten.
+  </div>
+
+  <div class="canvas-wrapper">
+    <canvas id="mazeCanvas" width="360" height="360"></canvas>
+  </div>
+
+  <div id="msg"></div>
+
+  <div class="dpad-container">
+    <div></div>
+    <button class="dpad-btn" onclick="moveKafka(0, -1)">▲</button>
+    <div></div>
+    <button class="dpad-btn" onclick="moveKafka(-1, 0)">◀</button>
+    <div style="display: flex; align-items: center; justify-content: center; font-size: 9px; color: #7d756b;">D-PAD
+    </div>
+    <button class="dpad-btn" onclick="moveKafka(1, 0)">▶</button>
+    <div></div>
+    <button class="dpad-btn" onclick="moveKafka(0, 1)">▼</button>
+    <div></div>
+  </div>
+
+  <div class="intro-overlay" id="introOverlay">
+    <div class="intro-box">
+      <div class="intro-stamp">Aufgabe</div>
+      <h2 class="intro-title">Das Kinsky-Palais</h2>
+      <p class="intro-text">Helfen Sie Kafka, seinen Weg durch das Labyrinth des Palais zu finden. Weichen Sie dem
+        übermächtigen Vater (V) aus und erreichen Sie den Schuleingang oben rechts.</p>
+      <button class="intro-btn" onclick="startAfterIntro()">Spiel starten</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('mazeCanvas');
+    const ctx = canvas.getContext('2d');
+    const msgDiv = document.getElementById('msg');
+
+    const gridSize = 10;
+    const cellSize = 36; // 36 * 10 = 360px
+
+    // 0 = Walkable, 1 = Wall
+    const maze = [
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], // Row 0 (Goal is 9, 0 - top right)
+      [0, 1, 1, 1, 1, 1, 1, 1, 1, 0], // Row 1
+      [0, 1, 0, 0, 0, 0, 0, 0, 1, 0], // Row 2
+      [0, 1, 0, 1, 1, 1, 1, 0, 1, 0], // Row 3
+      [0, 0, 0, 1, 0, 0, 1, 0, 0, 0], // Row 4
+      [0, 1, 0, 1, 0, 0, 1, 0, 1, 0], // Row 5
+      [0, 1, 0, 1, 1, 1, 1, 0, 1, 0], // Row 6
+      [0, 1, 0, 0, 0, 0, 0, 0, 1, 0], // Row 7
+      [0, 1, 1, 1, 1, 1, 1, 1, 1, 0], // Row 8
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]  // Row 9 (Start is 0, 9 - bottom left)
+    ];
+
+    let kafka = { x: 0, y: 9 };
+    let father = { x: 9, y: 1 };
+
+    // Store array of visited grid cell centers to draw the path line
+    let pathHistory = [{ x: 0, y: 9 }];
+
+    let gameOver = false;
+    let fatherInterval = null;
+
+    // Listen to keyboard
+    window.addEventListener('keydown', (e) => {
+      if (gameOver) return;
+      if (e.key === 'ArrowUp' || e.key === 'w') { e.preventDefault(); moveKafka(0, -1); }
+      if (e.key === 'ArrowDown' || e.key === 's') { e.preventDefault(); moveKafka(0, 1); }
+      if (e.key === 'ArrowLeft' || e.key === 'a') { e.preventDefault(); moveKafka(-1, 0); }
+      if (e.key === 'ArrowRight' || e.key === 'd') { e.preventDefault(); moveKafka(1, 0); }
+    });
+
+    function isWalkable(x, y) {
+      if (x < 0 || x >= gridSize || y < 0 || y >= gridSize) return false;
+      return maze[y][x] === 0;
+    }
+
+    function moveKafka(dx, dy) {
+      if (gameOver) return;
+
+      const newX = kafka.x + dx;
+      const newY = kafka.y + dy;
+
+      if (isWalkable(newX, newY)) {
+        kafka.x = newX;
+        kafka.y = newY;
+
+        // Add to history
+        pathHistory.push({ x: newX, y: newY });
+
+        draw();
+        checkCollisions();
+      }
+    }
+
+    function moveFather() {
+      if (gameOver) return;
+
+      // Find shortest path to Kafka using Breadth-First Search (BFS)
+      const queue = [[father.x, father.y]];
+      const visited = {};
+      visited[`${father.x},${father.y}`] = null;
+
+      let found = false;
+      while (queue.length > 0) {
+        const [cx, cy] = queue.shift();
+        if (cx === kafka.x && cy === kafka.y) {
+          found = true;
+          break;
+        }
+
+        const neighbors = [
+          { x: cx, y: cy - 1 }, // Up
+          { x: cx, y: cy + 1 }, // Down
+          { x: cx - 1, y: cy }, // Left
+          { x: cx + 1, y: cy }  // Right
+        ];
+
+        for (const n of neighbors) {
+          const key = `${n.x},${n.y}`;
+          if (isWalkable(n.x, n.y) && !(key in visited)) {
+            visited[key] = { x: cx, y: cy };
+            queue.push([n.x, n.y]);
+          }
+        }
+      }
+
+      if (found) {
+        let curr = { x: kafka.x, y: kafka.y };
+        let path = [];
+        while (curr !== null) {
+          path.push(curr);
+          curr = visited[`${curr.x},${curr.y}`];
+        }
+        if (path.length >= 2) {
+          const nextStep = path[path.length - 2];
+          father.x = nextStep.x;
+          father.y = nextStep.y;
+        }
+      }
+
+      draw();
+      checkCollisions();
+    }
+
+    function checkCollisions() {
+      if (gameOver) return;
+
+      // Check if Father caught Kafka
+      if (kafka.x === father.x && kafka.y === father.y) {
+        msgDiv.textContent = "Der Vater hat dich erwischt! Neustart...";
+        kafka = { x: 0, y: 9 };
+        father = { x: 9, y: 1 };
+        pathHistory = [{ x: 0, y: 9 }];
+
+        // Brief freeze
+        gameOver = true;
+        setTimeout(() => {
+          gameOver = false;
+          msgDiv.textContent = "";
+          draw();
+        }, 1000);
+
+        return;
+      }
+
+      // Check if Kafka reached school entrance (Row 0, Col 9)
+      if (kafka.x === 9 && kafka.y === 0) {
+        gameOver = true;
+        clearInterval(fatherInterval);
+        msgDiv.textContent = "Erfolg! Schule erreicht.";
+
+        draw(); // Draw final state with stamp
+
+        setTimeout(() => {
+          const imgData = canvas.toDataURL('image/png');
+          window.parent.postMessage({
+            type: 'GAME_SUCCESS',
+            data: imgData
+          }, '*');
+        }, 1200);
+      }
+    }
+
+    function draw() {
+      // Clear
+      ctx.fillStyle = '#ecece7';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw Grid Maze
+      for (let r = 0; r < gridSize; r++) {
+        for (let c = 0; c < gridSize; c++) {
+          if (maze[r][c] === 1) {
+            // Wall
+            ctx.fillStyle = '#4e453d';
+            ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+            // Wall outline
+            ctx.strokeStyle = '#2c2a29';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(c * cellSize, r * cellSize, cellSize, cellSize);
+          } else {
+            // Floor grid hint
+            ctx.strokeStyle = 'rgba(0,0,0,0.03)';
+            ctx.lineWidth = 0.5;
+            ctx.strokeRect(c * cellSize, r * cellSize, cellSize, cellSize);
+          }
+        }
+      }
+
+      // Draw Goal point indicator (Row 0, Col 9)
+      ctx.fillStyle = 'rgba(184, 46, 36, 0.15)';
+      ctx.fillRect(9 * cellSize, 0, cellSize, cellSize);
+      ctx.strokeStyle = '#b82e24';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(9 * cellSize, 0, cellSize, cellSize);
+      ctx.fillStyle = '#b82e24';
+      ctx.font = 'bold 9px "Courier New"';
+      ctx.textAlign = 'center';
+      ctx.fillText("SCHULE", 9 * cellSize + cellSize / 2, cellSize / 2 + 3);
+
+      // Draw Path history line (Kafka's trail)
+      if (pathHistory.length > 1) {
+        ctx.strokeStyle = '#b82e24';
+        ctx.lineWidth = 3.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(pathHistory[0].x * cellSize + cellSize / 2, pathHistory[0].y * cellSize + cellSize / 2);
+        for (let i = 1; i < pathHistory.length; i++) {
+          ctx.lineTo(pathHistory[i].x * cellSize + cellSize / 2, pathHistory[i].y * cellSize + cellSize / 2);
+        }
+        ctx.stroke();
+      }
+
+      // Draw Kafka
+      const kX = kafka.x * cellSize + cellSize / 2;
+      const kY = kafka.y * cellSize + cellSize / 2;
+      ctx.fillStyle = '#b82e24';
+      ctx.beginPath();
+      ctx.arc(kX, kY, 11, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // Letter K
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 11px "Courier New"';
+      ctx.textAlign = 'center';
+      ctx.fillText("K", kX, kY + 3.5);
+
+      // Draw Father
+      const fX = father.x * cellSize + cellSize / 2;
+      const fY = father.y * cellSize + cellSize / 2;
+      ctx.fillStyle = '#2c2a29';
+      ctx.beginPath();
+      ctx.arc(fX, fY, 12, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // Letter V
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 11px "Courier New"';
+      ctx.textAlign = 'center';
+      ctx.fillText("V", fX, fY + 3.5);
+
+      // If game is completed, draw stamp
+      if (gameOver && kafka.x === 9 && kafka.y === 0) {
+        ctx.save();
+        ctx.translate(180, 180);
+        ctx.rotate(Math.PI / 15);
+        ctx.strokeStyle = '#b82e24';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(-80, -25, 160, 50);
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-76, -21, 152, 42);
+        ctx.fillStyle = '#b82e24';
+        ctx.font = 'bold 16px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText("BESTANDEN", 0, 3);
+        ctx.font = 'bold 9px "Courier New"';
+        ctx.fillText("GYMNASIUM ERREICHT", 0, 16);
+        ctx.restore();
+      }
+    }
+
+    function startAfterIntro() {
+      document.getElementById('introOverlay').classList.add('hidden');
+      fatherInterval = setInterval(moveFather, 300);
+    }
+
+    draw();
+  </script>
+</body>
+
+</html>
+</script>
+</body>
+
+</html>

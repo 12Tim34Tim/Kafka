@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reise-Station XII: Zivilschwimmschule</title>
+  <style>
+    body {
+      background: #fdfcf7;
+      color: #2c2a29;
+      font-family: 'Courier New', Courier, monospace;
+      margin: 0;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+    #info {
+      display: none;
+      font-size: 12px;
+      color: #7d756b;
+      margin-bottom: 8px;
+      text-align: center;
+      max-width: 450px;
+    }
+    /* Game Intro Overlay */
+    .intro-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #fdfcf7;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      box-sizing: border-box;
+      z-index: 2000;
+      text-align: center;
+      transition: opacity 0.35s ease;
+    }
+    .intro-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .intro-box {
+      background: #fcfaf2;
+      border: 1px solid rgba(139, 128, 115, 0.3);
+      padding: 24px;
+      border-radius: 6px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+      max-width: 360px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .intro-stamp {
+      border: 2px dashed #b82e24;
+      color: #b82e24;
+      padding: 4px 10px;
+      font-size: 10px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .intro-title {
+      font-size: 15px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      color: #2c2a29;
+    }
+    .intro-text {
+      font-size: 11.5px;
+      line-height: 1.5;
+      color: #5c5650;
+      margin-bottom: 20px;
+    }
+    .intro-btn {
+      background: #b82e24;
+      color: white;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 4px;
+      font-family: 'Courier New', Courier, monospace;
+      font-weight: bold;
+      cursor: pointer;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+    .intro-btn:hover {
+      background: #962018;
+    }
+    #timer-bar {
+      font-size: 14px;
+      font-weight: bold;
+      color: #b82e24;
+      margin-bottom: 8px;
+    }
+    .canvas-wrapper {
+      position: relative;
+      border: 1px solid rgba(139, 128, 115, 0.2);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      max-width: 100%;
+    }
+    canvas {
+      display: block;
+      background: #ecece7;
+      cursor: pointer;
+      max-width: 100%;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="info">Tippen Sie wiederholt, um Ihren Schatten aufzublähen. Ohne Aktivität schrumpft er sofort.</div>
+  <div id="timer-bar">Messdauer: 5.0s</div>
+
+  <div class="canvas-wrapper">
+    <canvas id="shadowCanvas" width="400" height="350"></canvas>
+  </div>
+
+  <script>
+    let gameStarted = false;
+    const canvas = document.getElementById('shadowCanvas');
+    canvas.width = 800;
+    canvas.height = 700;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(2, 2);
+    const timerBar = document.getElementById('timer-bar');
+
+    let gameActive = true;
+    let timeRemaining = 5.0; // Seconds
+    
+    // Shadow properties
+    let kafkaScale = 0.25; // Scales between 0.2 and 0.58
+    const minScale = 0.20;
+    const maxScale = 0.58; // Capped below father's size (which is represented as scale 1.0)
+    const decayRate = 0.12; // Size decay per second
+    const inflateStep = 0.045; // Grow step per click
+
+    // Handle clicks/taps to inflate shadow
+    window.addEventListener('mousedown', inflateShadow);
+    window.addEventListener('touchstart', (e) => {
+      inflateShadow();
+      e.preventDefault();
+    });
+
+    function inflateShadow() {
+      if (!gameStarted) return;
+      if (!gameActive) return;
+      
+      // Progressive square-root scaling
+      const ratio = Math.max(0, (maxScale - kafkaScale) / (maxScale - minScale));
+      const currentStep = inflateStep * Math.sqrt(ratio);
+      
+      kafkaScale += currentStep;
+      if (kafkaScale > maxScale) kafkaScale = maxScale;
+    }
+
+    // Main loops
+    let lastTime = performance.now();
+    
+    function update(time) {
+      if (!gameActive) return;
+      
+      const dt = (time - lastTime) / 1000;
+      lastTime = time;
+
+      // Decrement Timer
+      timeRemaining -= dt;
+      if (timeRemaining <= 0) {
+        timeRemaining = 0;
+        gameActive = false;
+        finishGame();
+      }
+      
+      timerBar.textContent = `Dauer: ${timeRemaining.toFixed(1)}s`;
+
+      // Decay Kafka's shadow scale (frame-rate independent)
+      kafkaScale -= decayRate * dt;
+      if (kafkaScale < minScale) kafkaScale = minScale;
+
+      draw();
+
+      if (gameActive) {
+        requestAnimationFrame(update);
+      }
+    }
+
+    function draw() {
+      // Clear with wood-tinted wall background
+      ctx.fillStyle = '#ecece7';
+      ctx.fillRect(0, 0, 400, 350);
+
+      // Draw horizontal wooden wall planks guidelines
+      ctx.strokeStyle = 'rgba(0,0,0,0.05)';
+      ctx.lineWidth = 2;
+      for (let y = 40; y < 350; y += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(400, y);
+        ctx.stroke();
+      }
+
+      // Draw ground line
+      ctx.strokeStyle = '#444';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, 310);
+      ctx.lineTo(400, 310);
+      ctx.stroke();
+
+      // FATHER'S SHADOW (Broad and massive silhouette, right side)
+      // Drawn relative to right center X=270, groundY=310
+      ctx.save();
+      ctx.fillStyle = '#121214'; // Cold dark shadow
+      ctx.beginPath();
+      // Broad shoulders, muscular torso
+      ctx.moveTo(210, 310); // Left foot
+      ctx.lineTo(240, 240); // Hip left
+      ctx.lineTo(200, 160); // Shoulder left
+      ctx.lineTo(240, 110); // Neck base left
+      // Giant head
+      ctx.arc(270, 85, 25, Math.PI, 0); // Head dome
+      ctx.lineTo(300, 110); // Head right
+      ctx.lineTo(340, 160); // Shoulder right
+      ctx.lineTo(300, 240); // Hip right
+      ctx.lineTo(330, 310); // Right foot
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // Label "VATER" on his shadow chest
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      ctx.font = 'bold 22px "Courier New"';
+      ctx.textAlign = 'center';
+      ctx.fillText("HERR VATER", 270, 175);
+
+      // KAFKA'S SHADOW (Thin, slouching silhouette, left side)
+      // Grows/shrinks depending on kafkaScale
+      // Drawn relative to left center X=110, groundY=310
+      ctx.save();
+      ctx.fillStyle = '#1e1e22'; // Slightly lighter than father
+      
+      const kX = 110;
+      const kY = 310;
+      
+      // Translate to scale anchor (ground center of shadow)
+      ctx.translate(kX, kY);
+      ctx.scale(kafkaScale * 1.5, kafkaScale * 1.5);
+      
+      ctx.beginPath();
+      // Thin slouched posture path
+      ctx.moveTo(-15, 0); // left foot
+      ctx.lineTo(-10, -60); // hip
+      ctx.lineTo(-22, -120); // slouched narrow shoulder left
+      ctx.lineTo(-5, -145); // narrow neck
+      // Slouched head
+      ctx.arc(0, -165, 16, Math.PI * 0.9, -Math.PI * 0.1);
+      ctx.lineTo(18, -145); // neck right
+      ctx.lineTo(10, -120); // shoulder right
+      ctx.lineTo(10, -60); // hip right
+      ctx.lineTo(15, 0); // right foot
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // Label "FRANZ" inside Kafka's shadow
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.font = 'bold 9px "Courier New"';
+      ctx.textAlign = 'center';
+      ctx.fillText("FRANZ", kX, kY - (kafkaScale * 180));
+    }
+
+    function finishGame() {
+      // Paint overlay final state
+      draw();
+      
+      // Capture canvas & post success
+      const imgData = canvas.toDataURL('image/png');
+      setTimeout(() => {
+        window.parent.postMessage({
+          type: 'GAME_SUCCESS',
+          data: imgData
+        }, '*');
+      }, 1000);
+    }
+
+    function startAfterIntro() {
+      document.getElementById('introOverlay').classList.add('hidden');
+      gameStarted = true;
+      lastTime = performance.now();
+      requestAnimationFrame(update);
+    }
+  </script>
+  <div class="intro-overlay" id="introOverlay">
+    <div class="intro-box">
+      <div class="intro-stamp">Aufgabe</div>
+      <h2 class="intro-title">Zivilschwimmschule</h2>
+      <p class="intro-text">Tippen Sie schnell und wiederholt, um Kafkas Schatten aufzublähen. Ohne Aktivität schrumpft er sofort wieder zusammen.</p>
+      <button class="intro-btn" onclick="startAfterIntro()">Spiel starten</button>
+    </div>
+  </div>
+</body>
+</html>
